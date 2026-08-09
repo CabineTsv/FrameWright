@@ -1,0 +1,36 @@
+BasedOnStyle: LLVM
+Language: Cpp
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+ColumnLimit: 100
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+BreakBeforeBraces: Attach
+
+AlignEscapedNewlines: Left
+AlignConsecutiveMacros: false
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Empty
+
+BinPackArguments: false
+BinPackParameters: false
+
+PackConstructorInitializers: Never
+
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+SortIncludes: false
+
+LambdaBodyIndentation: Signature

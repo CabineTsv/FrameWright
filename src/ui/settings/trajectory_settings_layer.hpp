@@ -1,0 +1,168 @@
+#include "../../trajectory/trajectory.hpp"
+
+#include "../../core/bot.hpp"
+
+using namespace geode::prelude;
+
+class TrajectorySettingsLayer : public geode::Popup, public TextInputDelegate {
+
+  public:
+    static TrajectorySettingsLayer* create() {
+        auto* layer = new TrajectorySettingsLayer();
+        if (layer && layer->init()) {
+            layer->autorelease();
+            return layer;
+        }
+        delete layer;
+        return nullptr;
+    }
+
+  private:
+    ColorChannelSprite* color1 = nullptr;
+    ColorChannelSprite* color2 = nullptr;
+
+    TextInput* input = nullptr;
+
+    bool init() override {
+        if (!Popup::init(250, 180, Utils::getTexture().c_str()))
+            return false;
+        setTitle("Show Trajectory");
+
+        Utils::setBackgroundColor(m_bgSprite);
+
+        CCLabelBMFont* lbl = CCLabelBMFont::create("Both Sides", "bigFont.fnt");
+        lbl->setPosition({m_size.width - 68, 77});
+        lbl->setScale(0.35f);
+        m_mainLayer->addChild(lbl);
+
+        CCMenuItemToggler* toggle = CCMenuItemExt::createTogglerWithStandardSprites(
+            0.5f, [this](CCMenuItemToggler* sender) {
+                TrajectorySettingsLayer::onToggle(sender);
+            });
+        toggle->setPosition({m_size.width - 68, 56});
+        toggle->toggle(Mod::get()->getSavedValue<bool>("macro_trajectory_both_sides"));
+        m_buttonMenu->addChild(toggle);
+
+        lbl = CCLabelBMFont::create("Primary Color", "bigFont.fnt");
+        lbl->setPosition({68, 126});
+        lbl->setScale(0.35f);
+        m_mainLayer->addChild(lbl);
+
+        lbl = CCLabelBMFont::create("Secondary Color", "bigFont.fnt");
+        lbl->setPosition({m_size.width - 68, 126});
+        lbl->setScale(0.35f);
+        m_mainLayer->addChild(lbl);
+
+        lbl = CCLabelBMFont::create("Trajectory Length", "bigFont.fnt");
+        lbl->setPosition({68, 77});
+        lbl->setScale(0.35f);
+        m_mainLayer->addChild(lbl);
+
+        input = TextInput::create(50.f, "0");
+        input->setPosition({68, 56});
+        input->setScale(0.65f);
+        input->getInputNode()->setAllowedChars("0123456789");
+        input->getInputNode()->setDelegate(this);
+        input->setString(Mod::get()->getSavedValue<std::string>("trajectory_length").c_str());
+        m_mainLayer->addChild(input);
+
+        color1 = ColorChannelSprite::create();
+        color1->setColor(ShowTrajectory::ccc3BFromccc4F(ShowTrajectory::get().color1));
+        color1->setScale(0.5f);
+
+        CCMenuItemSpriteExtra* colorButton =
+            CCMenuItemExt::createSpriteExtra(color1, [this](CCMenuItemSpriteExtra* sender) {
+                TrajectorySettingsLayer::openColorPicker(sender);
+            });
+        colorButton->setPosition({68, 109});
+        colorButton->setTag(1);
+        m_buttonMenu->addChild(colorButton);
+
+        color2 = ColorChannelSprite::create();
+        color2->setColor(ShowTrajectory::ccc3BFromccc4F(ShowTrajectory::get().color2));
+        color2->setScale(0.5f);
+
+        colorButton =
+            CCMenuItemExt::createSpriteExtra(color2, [this](CCMenuItemSpriteExtra* sender) {
+                TrajectorySettingsLayer::openColorPicker(sender);
+            });
+        colorButton->setTag(2);
+        colorButton->setPosition({m_size.width - 68, 109});
+        m_buttonMenu->addChild(colorButton);
+
+        ButtonSprite* btnSpr = ButtonSprite::create("OK");
+        btnSpr->setScale(0.73f);
+        CCMenuItemSpriteExtra* btn =
+            CCMenuItemExt::createSpriteExtra(btnSpr, [this](CCMenuItemSpriteExtra* sender) {
+                TrajectorySettingsLayer::onClose(sender);
+            });
+        btn->setPosition({m_size.width / 2, 23});
+        m_buttonMenu->addChild(btn);
+
+        btnSpr = ButtonSprite::create("Restore");
+        btnSpr->setScale(0.3f);
+        btn = CCMenuItemExt::createSpriteExtra(btnSpr, [this](CCMenuItemSpriteExtra* sender) {
+            TrajectorySettingsLayer::onRestore(sender);
+        });
+        btn->setPosition({223, 14});
+        m_buttonMenu->addChild(btn);
+
+        return true;
+    }
+
+    void onToggle(CCObject* obj) {
+        CCMenuItemToggler* toggle = static_cast<CCMenuItemToggler*>(obj);
+
+        Mod::get()->setSavedValue("macro_trajectory_both_sides", !toggle->isToggled());
+        Bot::get().trajectoryBothSides = !toggle->isToggled();
+    }
+
+    void onRestore(CCObject*) {
+        color1->setColor(ccc3(74, 226, 85));
+        color2->setColor(ccc3(130, 8, 8));
+        input->setString("240");
+
+        textChanged(nullptr);
+    }
+
+    cocos2d::ccColor4F ccColor4FFromccColor4B(const cocos2d::ccColor4B& color) {
+        return cocos2d::ccColor4F(
+            color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+    }
+
+    void openColorPicker(CCObject* obj) {
+        bool primary = static_cast<CCNode*>(obj)->getTag() == 1;
+        ColorChannelSprite* color = primary ? color1 : color2;
+
+        ColorPickPopup* popup = ColorPickPopup::create(color->getColor());
+        popup->setColorTarget(color);
+        popup->setCallback([this, primary, color](const cocos2d::ccColor4B& newColor) {
+            color->setColor(ccc3(newColor.r, newColor.g, newColor.b));
+            auto converted = ccColor4FFromccColor4B(newColor);
+            if (primary) {
+                ShowTrajectory::get().color1 = converted;
+            } else {
+                ShowTrajectory::get().color2 = converted;
+            }
+            ShowTrajectory::get().updateMergedColor();
+
+            Mod::get()->setSavedValue(
+                primary ? "trajectory_color1" : "trajectory_color2",
+                ShowTrajectory::ccc3BFromccc4F(converted));
+        });
+
+        popup->show();
+    }
+
+    void textChanged(CCTextInputNode*) override {
+        std::string str = input->getString();
+        int length = geode::utils::numFromString<int>(str).unwrapOr(0);
+
+        if (length > 2560 || length < 1 || str.empty())
+            return input->setString(
+                Mod::get()->getSavedValue<std::string>("trajectory_length").c_str());
+
+        ShowTrajectory::get().length = length;
+        Mod::get()->setSavedValue("trajectory_length", str);
+    }
+};

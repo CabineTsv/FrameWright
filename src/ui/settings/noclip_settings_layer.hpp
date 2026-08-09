@@ -1,0 +1,73 @@
+#include <Geode/Geode.hpp>
+#include <Geode/Prelude.hpp>
+
+#include "../../utils/utils.hpp"
+
+using namespace geode::prelude;
+
+class NoclipSettingsLayer : public geode::Popup {
+
+  private:
+    bool init() {
+        if (!Popup::init(200, 176, Utils::getTexture().c_str()))
+            return false;
+        setTitle("Noclip");
+
+        cocos2d::CCPoint offset = (CCDirector::sharedDirector()->getWinSize() -
+                                   m_mainLayer->getContentSize()) /
+                                  2;
+        m_mainLayer->setPosition(m_mainLayer->getPosition() - offset);
+        m_closeBtn->setPosition(m_closeBtn->getPosition() + offset);
+        m_bgSprite->setPosition(m_bgSprite->getPosition() + offset);
+        m_title->setPosition(m_title->getPosition() + offset);
+
+        Utils::setBackgroundColor(m_bgSprite);
+        CCMenu *menu = CCMenu::create();
+        m_mainLayer->addChild(menu);
+
+        CCLabelBMFont *lbl = CCLabelBMFont::create("Player 1", "bigFont.fnt");
+        lbl->setPosition({17, 21});
+        lbl->setScale(0.5f);
+        menu->addChild(lbl);
+
+        CCMenuItemToggler *toggle = CCMenuItemExt::createTogglerWithStandardSprites(0.875f, [this](CCMenuItemToggler *sender) { NoclipSettingsLayer::onToggle(sender); });
+        toggle->setPosition({-47, 21});
+        toggle->setID("p1");
+        toggle->toggle(Mod::get()->getSavedValue<bool>("macro_noclip_p1"));
+        menu->addChild(toggle);
+
+        lbl = CCLabelBMFont::create("Player 2", "bigFont.fnt");
+        lbl->setPosition({17, -35});
+        lbl->setScale(0.5f);
+        menu->addChild(lbl);
+
+        toggle = CCMenuItemExt::createTogglerWithStandardSprites(0.875f, [this](CCMenuItemToggler *sender) { NoclipSettingsLayer::onToggle(sender); });
+        toggle->setPosition({-47, -35});
+        toggle->setID("p2");
+        toggle->toggle(Mod::get()->getSavedValue<bool>("macro_noclip_p2"));
+        menu->addChild(toggle);
+
+        return true;
+    }
+
+  public:
+    static NoclipSettingsLayer* create() {
+        auto* layer = new NoclipSettingsLayer();
+        if (layer && layer->init()) {
+            layer->autorelease();
+            return layer;
+        }
+        delete layer;
+        return nullptr;
+    }
+
+    void onToggle(CCObject *obj) {
+        CCMenuItemToggler *toggle = typeinfo_cast<CCMenuItemToggler *>(obj);
+        if (!toggle)
+            return;
+
+        std::string id = toggle->getID();
+
+        Mod::get()->setSavedValue("macro_noclip_" + id, !toggle->isToggled());
+    }
+};

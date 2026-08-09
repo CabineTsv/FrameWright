@@ -398,6 +398,18 @@ class $modify(FixPlayLayer, PlayLayer) {
             snapshot->apply(m_player1, m_gameState.m_isDualMode ? m_player2 : nullptr, this);
         if (snapshot && wasRecordingOrPlaying)
             snapshot->applyMacroState();
+
+        if (bot.state == state::recording && checkpoint) {
+            int checkpointFrame = static_cast<int>(checkpoint->m_gameState.m_currentProgress / 2);
+
+            while (!bot.replay.inputs.empty() &&
+                   bot.replay.inputs.back().frame > static_cast<uint64_t>(checkpointFrame))
+                bot.replay.inputs.pop_back();
+
+            while (!bot.replay.frameFixes.empty() &&
+                   bot.replay.frameFixes.back().frame > checkpointFrame)
+                bot.replay.frameFixes.pop_back();
+        }
     }
 
     CheckpointObject* createCheckpoint() {

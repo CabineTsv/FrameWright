@@ -1,4 +1,3 @@
-// upd
 #include "../bot.hpp"
 
 #include "../../practice_fixes/practice_fixes.hpp"

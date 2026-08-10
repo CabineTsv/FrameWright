@@ -6,11 +6,11 @@
         "android": "2.2081",
         "ios": "2.2081"
     },
-    "version": "2.6.0",
+    "version": "2.7.0",
     "id": "zilko.xdbot",
     "name": "Framewright",
     "developer": "Cabinet",
-    "description": "Most frame accurate macro made by Cabinet..",
+    "description": "Frame perfect macro.",
     "dependencies": {
         "eclipse.eclipse-menu": {
             "version": ">=1.8.3",
@@ -300,7 +300,7 @@
         ]
     },
     "links": {
-        "source": "https://github.com/CabineTsv/FrameWright/",
+        "source": "https://github.com/ZiLko/xdBot",
         "community": "https://discord.gg/w6yvdzVzBd"
     },
     "tags": [

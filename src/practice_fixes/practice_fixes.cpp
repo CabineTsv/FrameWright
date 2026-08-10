@@ -94,8 +94,10 @@ struct PracticeCheckpointData {
     double schedulerOverflow = 0.0;
     size_t currentAction = 0;
     size_t currentFrameFix = 0;
+    size_t currentTpsChange = 0;
     std::vector<input> inputs;
     std::vector<gdr_legacy::FrameFix> frameFixes;
+    std::vector<gdr_legacy::TpsChange> tpsChanges;
     gd::unordered_map<int, int> persistentItemMap;
     std::array<float, 2000> varianceValues = {};
     std::vector<GameObject*> calcNonEffectObjects;
@@ -135,8 +137,10 @@ struct PracticeCheckpointData {
         schedulerOverflow = bot.updater.overflow;
         currentAction = bot.currentAction;
         currentFrameFix = bot.currentFrameFix;
+        currentTpsChange = bot.currentTpsChange;
         inputs = bot.replay.inputs;
         frameFixes = bot.replay.frameFixes;
+        tpsChanges = bot.replay.tpsChanges;
     }
 
     void apply(PlayerObject* p1Obj, PlayerObject* p2Obj, PlayLayer* plObj) const {
@@ -162,14 +166,14 @@ struct PracticeCheckpointData {
         }
 
         auto& bot = Bot::get();
+        bool previousIgnore = bot.ignoreRecordAction;
+        bot.ignoreRecordAction = true;
+
         if (bot.tps != tps)
             bot.setTps(tps);
         if (bot.tpsEnabled != tpsEnabled)
             bot.setTpsEnabled(tpsEnabled);
         {
-            bool previousIgnore = bot.ignoreRecordAction;
-            bot.ignoreRecordAction = true;
-
             bot.attemptStartFrame = attemptStartFrame;
             bot.updater.frameCount = std::max(frame - attemptStartFrame + frameOffset, 0);
             bot.previousFrame = previousFrame;
@@ -177,14 +181,16 @@ struct PracticeCheckpointData {
             bot.updater.overflow = schedulerOverflow;
             bot.currentAction = currentAction;
             bot.currentFrameFix = currentFrameFix;
+            bot.currentTpsChange = currentTpsChange;
 
             if (bot.state == state::recording) {
                 bot.replay.inputs = inputs;
                 bot.replay.frameFixes = frameFixes;
+                bot.replay.tpsChanges = tpsChanges;
             }
-
-            bot.ignoreRecordAction = previousIgnore;
         }
+
+        bot.ignoreRecordAction = previousIgnore;
         GameToolbox::fast_srand(randomSeed);
     }
 
@@ -202,6 +208,7 @@ struct PracticeCheckpointData {
         if (bot.state == state::recording) {
             bot.replay.inputs = inputs;
             bot.replay.frameFixes = frameFixes;
+            bot.replay.tpsChanges = tpsChanges;
         }
 
         int targetFrame = frame - frameOffset;
@@ -214,6 +221,11 @@ struct PracticeCheckpointData {
         while (bot.currentFrameFix < bot.replay.frameFixes.size() &&
                bot.replay.frameFixes[bot.currentFrameFix].frame < targetFrame)
             bot.currentFrameFix++;
+
+        bot.currentTpsChange = 0;
+        while (bot.currentTpsChange < bot.replay.tpsChanges.size() &&
+               bot.replay.tpsChanges[bot.currentTpsChange].frame < targetFrame)
+            bot.currentTpsChange++;
 
         bot.ignoreRecordAction = previousIgnore;
     }
@@ -409,6 +421,12 @@ class $modify(FixPlayLayer, PlayLayer) {
             while (!bot.replay.frameFixes.empty() &&
                    bot.replay.frameFixes.back().frame > checkpointFrame)
                 bot.replay.frameFixes.pop_back();
+
+            while (!bot.replay.tpsChanges.empty() &&
+                   bot.replay.tpsChanges.back().frame > checkpointFrame)
+                bot.replay.tpsChanges.pop_back();
+
+            bot.currentTpsChange = std::min(bot.currentTpsChange, bot.replay.tpsChanges.size());
         }
     }
 

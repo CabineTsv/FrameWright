@@ -15,6 +15,11 @@ Bot::Bot() {
     g_botBootstrapping = true;
     Settings::applyDefaults();
     Settings::loadRuntimeState(*this);
+    bot_incompat::configureClickBetweenFrames();
+
+    onTpsChanged.push_back([](double) { Bot::recordTpsChange(); });
+    onTpsEnabledChanged.push_back([](bool) { Bot::recordTpsChange(); });
+
     g_botBootstrapping = false;
 }
 
@@ -103,39 +108,48 @@ void Bot::recordAction(int frame, int button, bool player2, bool hold) {
 
     auto& bot = Bot::get();
 
-    if (bot.replay.inputs.empty())
+    if (bot.replay.inputs.empty()) {
         updateMacroInfo(pl);
+        bot.lastButtonHold = {{{-1, -1, -1, -1}, {-1, -1, -1, -1}}};
+    }
 
     if (bot.tpsEnabled)
         bot.replay.framerate = bot.tps;
 
     player2 = !player2;
 
-    for (int i = static_cast<int>(bot.replay.inputs.size()) - 1; i >= 0; --i) {
-        auto& last = bot.replay.inputs[i];
-        if (last.button != button || last.player2 != player2)
-            continue;
+    if (button < 1 || button > 3)
+        return;
 
-        if (last.down == hold)
-            return;
-        break;
-    }
+    int8_t& lastState = bot.lastButtonHold[player2 ? 1 : 0][button];
 
-    if (!hold) {
-        bool hasPress = false;
-        for (int i = static_cast<int>(bot.replay.inputs.size()) - 1; i >= 0; --i) {
-            auto& input = bot.replay.inputs[i];
-            if (input.button == button && input.player2 == player2 && input.down) {
-                hasPress = true;
-                break;
-            }
-        }
+    if (lastState == (hold ? 1 : 0))
+        return;
 
-        if (!hasPress)
-            return;
-    }
+    if (!hold && lastState == -1)
+        return;
 
+    lastState = hold ? 1 : 0;
     bot.replay.inputs.emplace_back(frame, button, player2, hold);
+}
+
+void Bot::recordTpsChange() {
+    auto& bot = Bot::get();
+    if (bot.state != state::recording || bot.ignoreRecordAction)
+        return;
+
+    if (!PlayLayer::get())
+        return;
+
+    int frame = Bot::getCurrentFrame();
+    float effectiveTps = Bot::getTPS();
+
+    if (!bot.replay.tpsChanges.empty() && bot.replay.tpsChanges.back().frame == frame) {
+        bot.replay.tpsChanges.back().tps = effectiveTps;
+        return;
+    }
+
+    bot.replay.tpsChanges.push_back({frame, effectiveTps});
 }
 
 void Bot::recordFrameFix(int frame, PlayerObject* p1, PlayerObject* p2) {

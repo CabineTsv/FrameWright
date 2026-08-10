@@ -2,6 +2,8 @@
 
 #include "updater.hpp"
 
+#include <array>
+
 #include "../gdr/gdr.hpp"
 #include "../practice_fixes/checkpoint.hpp"
 #include "../renderer/renderer.hpp"
@@ -51,6 +53,8 @@ class Bot {
 
     static void recordFrameFix(int frame, PlayerObject* p1, PlayerObject* p2);
 
+    static void recordTpsChange();
+
     static void autoSave(GJGameLevel* level, int number);
 
     static void tryAutosave(GJGameLevel* level, CheckpointObject* cp);
@@ -96,6 +100,12 @@ class Bot {
     int lastAutoSaveFrame = 0;
     asp::Instant lastAutoSaveMS = asp::Instant::now();
     int currentSession = 0;
+
+    // Recording dedup cache: -1 = never pressed this recording, 0 = released, 1 = held.
+    // Indexed [player2][button]. Reset whenever bot.replay.inputs is reset for a new
+    // recording (see Bot::recordAction). Avoids an O(n) backward scan of the whole
+    // inputs list on every single button press/release.
+    std::array<std::array<int8_t, 4>, 2> lastButtonHold = {{{-1, -1, -1, -1}, {-1, -1, -1, -1}}};
 
     bool stepFrame = false;
     bool suppressNextFrameStep = false;
@@ -202,6 +212,7 @@ class Bot {
 
     size_t currentAction = 0;
     size_t currentFrameFix = 0;
+    size_t currentTpsChange = 0;
     bool frameFixes = false;
     bool inputFixes = false;
 

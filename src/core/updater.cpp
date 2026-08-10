@@ -187,6 +187,12 @@ void BotUpdater::runScheduler(float dt, SchedulerUpdate const& update) {
     if (timestep <= 0.0)
         timestep = physicsDt;
 
+    int tpsInt = static_cast<int>(std::llround(Bot::getTPS()));
+    int nativeSubsteps = (bot.state == state::playing && tpsInt > 0 && tpsInt < 240 &&
+                           240 % tpsInt == 0)
+                              ? (240 / tpsInt)
+                              : 1;
+
     if (bot.frameStepper) {
         if (pl->m_player1 && pl->m_player1->m_isDead) {
             if (bot.mod->getSavedValue<bool>("macro_instant_respawn"))
@@ -258,7 +264,15 @@ void BotUpdater::runScheduler(float dt, SchedulerUpdate const& update) {
             return;
 
         stepCount = nextStepCount;
-        update(static_cast<float>(delta));
+
+        if (nativeSubsteps > 1) {
+            int totalNativeSteps = nextStepCount * nativeSubsteps;
+            for (int i = 0; i < totalNativeSteps; i++)
+                update(1.0f / 240.0f);
+        } else {
+            update(static_cast<float>(delta));
+        }
+
         stepCount = 1;
     };
 

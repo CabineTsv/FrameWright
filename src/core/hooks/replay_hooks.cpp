@@ -149,6 +149,7 @@ class $modify(PlayLayer) {
 
         bot.currentAction = 0;
         bot.currentFrameFix = 0;
+        bot.currentTpsChange = 0;
         bot.restart = false;
         bot.respawnFrame = frame;
 
@@ -160,6 +161,7 @@ class $modify(PlayLayer) {
             bot.state == state::recording) {
             bot.replay.inputs.clear();
             bot.replay.frameFixes.clear();
+            bot.replay.tpsChanges.clear();
             bot.checkpoints.clear();
 
             bot.replay.framerate = 240.f;
@@ -280,6 +282,17 @@ class $modify(BGLHook, GJBaseGameLayer) {
 
         bot.respawnFrame = -1;
         m_fields->macroInput = false;
+
+        while (bot.currentTpsChange < bot.replay.tpsChanges.size() &&
+               frame >= bot.replay.tpsChanges[bot.currentTpsChange].frame) {
+            auto& change = bot.replay.tpsChanges[bot.currentTpsChange];
+
+            bot.setTps(change.tps);
+            if (!bot.tpsEnabled)
+                bot.setTpsEnabled(true);
+
+            bot.currentTpsChange++;
+        }
 
         if (bot.currentAction == bot.replay.inputs.size()) {
             if (bot.stopPlaying) {

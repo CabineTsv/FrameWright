@@ -56,6 +56,11 @@ struct FrameFix {
     FrameData p2;
 };
 
+struct TpsChange {
+    int frame;
+    float tps;
+};
+
 } // namespace gdr_legacy
 
 struct ReplayInput : gdr::Input<> {
@@ -88,6 +93,7 @@ struct BotReplay : gdr::Replay<BotReplay, ReplayInput> {
     bool isLegacy = false;
 
     std::vector<gdr_legacy::FrameFix> frameFixes;
+    std::vector<gdr_legacy::TpsChange> tpsChanges;
 
     bool shouldParseExtension() const override {
         return botInfo.name == "xdBot";

@@ -219,6 +219,13 @@ void BotReplay::saveExtension(binary_writer& writer) const {
         writer << fix.p2.rotation;
         writer << fix.p2.rotate;
     }
+
+    writer << static_cast<uint64_t>(tpsChanges.size());
+
+    for (auto const& change : tpsChanges) {
+        writer << static_cast<uint64_t>(change.frame);
+        writer << change.tps;
+    }
 }
 
 void BotReplay::parseExtension(binary_reader& reader) {
@@ -244,6 +251,25 @@ void BotReplay::parseExtension(binary_reader& reader) {
         reader >> fix.p2.rotate;
 
         frameFixes.push_back(fix);
+    }
+
+    tpsChanges.clear();
+
+    if (botInfo.version < 2700)
+        return;
+
+    uint64_t tpsChangeCount = 0;
+    reader >> tpsChangeCount;
+    tpsChanges.reserve(tpsChangeCount);
+
+    for (uint64_t i = 0; i < tpsChangeCount; i++) {
+        gdr_legacy::TpsChange change;
+        uint64_t frame = 0;
+        reader >> frame;
+        change.frame = static_cast<int>(frame);
+        reader >> change.tps;
+
+        tpsChanges.push_back(change);
     }
 }
 

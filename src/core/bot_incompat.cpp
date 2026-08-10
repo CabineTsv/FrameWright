@@ -205,6 +205,12 @@ bool hasClickBetweenStepsLevelOverride() {
 }
 namespace bot_incompat {
 
+void configureClickBetweenFrames() {
+    auto* mod = Loader::get()->getLoadedMod("syzzi.click_between_frames");
+    if (mod)
+        mod->setSettingValue<bool>("physics-bypass", false);
+}
+
 bool hasIncompatibleMods() {
     std::vector<std::string> modsToDisable;
     std::vector<std::string> settingsToDisable;
